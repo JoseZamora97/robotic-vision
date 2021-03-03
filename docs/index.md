@@ -1,37 +1,61 @@
-## Welcome to GitHub Pages
+[Edit](https://github.com/JoseZamora97/robotic-vision/edit/main/docs/index.md)
 
-You can use the [editor on GitHub](https://github.com/JoseZamora97/robotic-vision/edit/main/docs/index.md) to maintain and preview the content for your website in Markdown files.
+# Line follower
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+## Filtro de color
+Para detectar la línea del resto de la pista es necesario emplear un filtro HSV que menos susceptible a 
+cambios de iluminación. No obstante, es necesario saber entre que valores del rango del espacio HSV se
+encuentra la línea a seguir. Por ello, se ha implementado una pequeña aplicación con *OpenCV* que hace
+uso de trackbars ``cv2.createTrackbar`` para seleccionar los valores y extraer la máscara binaria.
 
-### Markdown
+- En primer lugar, se crean los trackbars, se necesitan dos por cada canal para poder especificar los
+valores máximos y mínimos que pueden obtenerse.
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+  ````python
+  cv2.namedWindow(title_window)
 
-```markdown
-Syntax highlighted code block
+  # H - channel ---------------------------------------
+  cv2.createTrackbar(trackbar_min_h_name, title_window,
+                     0, trackbar_h_values, update)
+  cv2.createTrackbar(trackbar_max_h_name, title_window,
+                     0, trackbar_h_values, update)
 
-# Header 1
-## Header 2
-### Header 3
+  # S - channel ---------------------------------------
+  cv2.createTrackbar(trackbar_min_s_name, title_window,
+                     0, trackbar_s_values, update)
+  cv2.createTrackbar(trackbar_max_s_name, title_window,
+                     0, trackbar_s_values, update)
 
-- Bulleted
-- List
+  # V - channel ---------------------------------------
+  cv2.createTrackbar(trackbar_min_v_name, title_window,
+                     0, trackbar_v_values, update)
+  cv2.createTrackbar(trackbar_max_v_name, title_window,
+                         0, trackbar_v_values, update)
+  ````
+- Después se tienen que capturar los valores en el cambio de posición del trackbar esto se hace llamando a la
+  función ``update``.
+  
+  ````python
+  min_h = cv2.getTrackbarPos(trackbar_min_h_name, title_window)
+  max_h = cv2.getTrackbarPos(trackbar_max_h_name, title_window)
 
-1. Numbered
-2. List
+  # S - channel -------------------------------------------------
+  min_s = cv2.getTrackbarPos(trackbar_min_s_name, title_window)
+  max_s = cv2.getTrackbarPos(trackbar_max_s_name, title_window)
 
-**Bold** and _Italic_ and `Code` text
+  # V - channel -------------------------------------------------
+  min_v = cv2.getTrackbarPos(trackbar_min_v_name, title_window)
+  max_v = cv2.getTrackbarPos(trackbar_max_v_name, title_window)
+  ````
+- Una vez se tienen los valores se crea la máscara
 
-[Link](url) and ![Image](src)
-```
+  ````python
+  mask = cv2.inRange(im_base, (min_h, min_s, min_v), (max_h, max_s, max_v))
+  ````
+Ajustando los trackbars se obtiene la siguiente imagen de resultado:
 
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
+![hsv_color](https://user-images.githubusercontent.com/35663120/109877596-8175db00-7c73-11eb-9cda-f2525edcc2d6.PNG)
 
-### Jekyll Themes
+**Nota**: La imagen utilizada para extraer este filtro es la imagen de partida del simulador de Unibotics descargada
+desde el navegador.
 
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/JoseZamora97/robotic-vision/settings). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
-
-### Support or Contact
-
-Having trouble with Pages? Check out our [documentation](https://docs.github.com/categories/github-pages-basics/) or [contact support](https://support.github.com/contact) and we’ll help you sort it out.
