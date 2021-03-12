@@ -59,3 +59,22 @@ Ajustando los trackbars se obtiene la siguiente imagen de resultado:
 **Nota**: La imagen utilizada para extraer este filtro es la imagen de partida del simulador de Unibotics descargada
 desde el navegador.
 
+# Estrategia a seguir
+
+A lo largo de todo este estudio se va a intentar probar diferentes métodos para solucionar el problema del seguimiento de la línea. Estos experimentos
+van a incrementar en complejidad y se van a exponer los resultados obenidos así como los parámetros que se han usado en la obtención de los
+resultados.
+
+# Controlador P
+
+Para comenzar con esta serie de experimentos se comenzó con un controlador P para los giros (velocidad angular) y velocidad lineal. La idea era encontrar
+un valor **kp** tal que fuera capaz de completar el circuito con la restricción de seguir la línea lo máximo posible y, progresivamente, incrementar dicha
+velocidad.
+
+Para comenzar el análisis se recibe la imagen desde `HAL.getImage()`. De esta imagen se selecciona la mitad inferior y se le pasa el correspondiente filtro
+de color extrayendo la imagen binaria de la imagen. A esta última imagen se le calculan los contornos con `cv2.findContours` y los momentos `cv2.moments`.
+A partir de esta última operación se calcula el punto *centroide* y con este el error horizontal medido como la diferencia del centro de la imagen con la 
+coordenada horizontal del centroide.
+
+
+
