@@ -94,6 +94,10 @@ Sin embargo, analizar toda la imagen era ineficiente por lo que para mejorar la 
 
 Para completar el controlador PDI se le incorporó la componente integral, esta acumula los errores derivativos desde que el error no es 0. En este caso se bajó 1 segundo el tiempo anterior y se mejoró un poco la estabilidad.
 
+[Video](https://user-images.githubusercontent.com/35663120/111397183-f0662180-86c0-11eb-923b-32e0a013b515.mp4)
+
+
+
 
 
 
