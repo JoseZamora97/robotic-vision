@@ -1,8 +1,8 @@
-# Visión Robótica
+# Robotic Vision
 
-En esta página web se van a explicar todos los desarrollos y consideraciones tenidas en cuenta en la creación de las prácticas de la asignatura de Visión Robótica.
+In this web page we are going to explain all the developments and considerations taken into account in the creation of the practices of the Robotic Vision course.
 
-Esta prácticas son.
+These practices are:
 
 - [Follow Line](follow_line.md)
 - [3D Reconstruction](3d_recons.md)
