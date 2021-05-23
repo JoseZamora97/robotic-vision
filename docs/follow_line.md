@@ -1,13 +1,12 @@
 # Line follower
 
-## Filtro de color
-Para detectar la línea del resto de la pista es necesario emplear un filtro HSV que menos susceptible a 
-cambios de iluminación. No obstante, es necesario saber entre que valores del rango del espacio HSV se
-encuentra la línea a seguir. Por ello, se ha implementado una pequeña aplicación con *OpenCV* que hace
-uso de trackbars ``cv2.createTrackbar`` para seleccionar los valores y extraer la máscara binaria.
+## Color filter
+To detect the line from the rest of the track it is necessary to use a HSV filter that is less susceptible to illumination changes. However, it is necessary to know between which values of the HSV space range the line to follow lies. Therefore, a small application has been implemented with *OpenCV* that makes use of trackbars ``cv2.createTrackbar`` to select the values and extract the binary mask.
 
-- En primer lugar, se crean los trackbars, se necesitan dos por cada canal para poder especificar los
-valores máximos y mínimos que pueden obtenerse.
+- First, the trackbars are created, two are needed for each channel in order to specify the maximum and minimum values that can be obtained.
+
+
+Translated with www.DeepL.com/Translator (free version)
 
   ````python
   cv2.namedWindow(title_window)
@@ -30,8 +29,7 @@ valores máximos y mínimos que pueden obtenerse.
   cv2.createTrackbar(trackbar_max_v_name, title_window,
                          0, trackbar_v_values, update)
   ````
-- Después se tienen que capturar los valores en el cambio de posición del trackbar esto se hace llamando a la
-  función ``update``.
+- Then you have to capture the values in the trackbar position change this is done by calling the ``update`` function.
   
   ````python
   min_h = cv2.getTrackbarPos(trackbar_min_h_name, title_window)
@@ -45,155 +43,147 @@ valores máximos y mínimos que pueden obtenerse.
   min_v = cv2.getTrackbarPos(trackbar_min_v_name, title_window)
   max_v = cv2.getTrackbarPos(trackbar_max_v_name, title_window)
   ````
-- Una vez se tienen los valores se crea la máscara
+- Once the values are available, the mask is created.
 
   ````python
   mask = cv2.inRange(im_base, (min_h, min_s, min_v), (max_h, max_s, max_v))
   ````
-Ajustando los trackbars se obtiene la siguiente imagen de resultado:
+By adjusting the trackbars the following result image is obtained:
 
 ![hsv_color](https://user-images.githubusercontent.com/35663120/109877596-8175db00-7c73-11eb-9cda-f2525edcc2d6.PNG)
 
-**Nota**: La imagen utilizada para extraer este filtro es la imagen de partida del simulador de Unibotics descargada
-desde el navegador.
+**Note**: The image used to extract this filter is the starting image of the Unibotics simulator downloaded from the browser.
 
-## Estrategia a seguir
+## Strategy to follow
 
-A lo largo de todo este estudio se va a intentar probar diferentes métodos para solucionar el problema del seguimiento de la línea. Estos experimentos
-van a incrementar en complejidad y se van a exponer los resultados obenidos así como los parámetros que se han usado en la obtención de los
-resultados.
+Throughout this study we are going to try different methods to solve the line tracking problem. These experiments are going to increase in complexity and we are going to expose the results obtained as well as the parameters that have been used in obtaining the results.
 
-### Controlador P
+### Controller P
 
-Para comenzar con esta serie de experimentos se comenzó con un controlador P para los giros (velocidad angular) y velocidad constante. La idea era encontrar
-un valor **kp** tal que fuera capaz de completar el circuito con la restricción de seguir la línea lo máximo posible y, progresivamente, incrementar dicha
-velocidad.
+To begin with this series of experiments we started with a P controller for the turns (angular velocity) and constant velocity. The idea was to find a value **kp** such that it would be able to complete the circuit with the constraint of following the line as much as possible and progressively increase the speed.
 
-Para comenzar el análisis se recibe la imagen desde `HAL.getImage()`. De esta imagen se selecciona la mitad inferior y se le pasa el correspondiente filtro
-de color extrayendo la imagen binaria de la imagen. A esta última imagen se le calculan los contornos con `cv2.findContours` y los momentos `cv2.moments`.
-A partir de esta última operación se calcula el punto *centroide* y con este el error horizontal medido como la diferencia del centro de la imagen con la 
-coordenada horizontal del centroide.
+To start the analysis the image is received from `HAL.getImage()`. From this image the lower half is selected and the corresponding color filter is passed to extract the binary image from the image. To this last image the contours are calculated with `cv2.findContours` and the moments `cv2.moments`. From this last operation the *centroid* point is calculated and with this the horizontal error measured as the difference of the center of the image with the horizontal coordinate of the centroid. horizontal coordinate of the centroid.
 
-El máximo tiempo obtenido con esta configuración fue de 48 segundos, aunque fue obtenido gracias a un error en la carga de la perspectiva de la cámara. Siendo 1 minuto con 15 segundos la media de este controlador. La velocidad máxima que se pudo colocar para la obtención de los resultados tuvo el valor de 2. *(se comprobó con velocidad > 2 hasta un máximo de 3, sin embargo, los constantes vaivenes compensaban la velocidad mayor, por lo que el tiempo era el mismo)*
+The maximum time obtained with this configuration was 48 seconds, although it was obtained thanks to an error in the loading of the camera perspective. Being 1 minute and 15 seconds the average of this controller. The maximum speed that could be placed to obtain the results had the value of 2. *(it was tested with speed > 2 up to a maximum of 3, however, the constant back and forth compensated the higher speed, so the time was the same)*.
 
 ![controlador_p_vs_2_kph_0 002](https://user-images.githubusercontent.com/35663120/111233530-71ec7f80-85ed-11eb-99a4-2fb3cf073d9d.PNG)
 
-### Controlador PD
+### PD Controller
 
-Para intentar aplacar los vaivenes presentes en el controlador P se introdujo la componente derivativa a la ecuación del cómputo de la actualización de los giros. Esta consiste en almacenar en una variable el error previo y realizar la resta del nuevo error con este. Ajustando los valores **kp** para la componente proporcional y **kd** para la parte derivativa se obtuvieron mejores tiempos, en torno a los 50 segundos. 
+In order to try to appease the oscillations present in the P controller, the derivative component was introduced to the equation of the computation of the update of the turns. This consists of storing the previous error in a variable and subtracting the new error from it. By adjusting the values **kp** for the proportional component and **kd** for the derivative part, better times were obtained, around 50 seconds.
 
 [Video](https://user-images.githubusercontent.com/35663120/111240366-60aa6f80-85fb-11eb-9f3b-0ecd8fc74274.mp4)
 
-Sin embargo, analizar toda la imagen era ineficiente por lo que para mejorar la eficiencia se seleccionaron dos zonas de la imagen, una central y una inferior con la idea de calcular los centroides de ambas zonas y encontrar el punto medio donde calcular error horizontal. Teniendo dichos 3 puntos (2 centroides y el medio) se realizaron tests de estabilidad y velocidad siendo el mejor de ellos el más pegado a la línea del horizonte, bajando la marca a los 38 segundos.
+However, analyzing the whole image was inefficient, so to improve efficiency, two areas of the image were selected, a central one and a lower one, with the idea of calculating the centroids of both areas and finding the middle point where to calculate the horizontal error. Having these 3 points (2 centroids and the middle one), stability and speed tests were performed, the best of them being the one closest to the horizon line, lowering the mark to 38 seconds.
 
 [Video](https://user-images.githubusercontent.com/35663120/111241034-9a2faa80-85fc-11eb-8ffe-62ea51678348.mp4)
 
-### Controlador PDI
+### PDI Controller
 
-Para completar el controlador PDI se le incorporó la componente integral, esta acumula los errores derivativos desde que el error es distinto 0. En este caso se bajó 1 segundo el tiempo anterior y se mejoró un poco la estabilidad.
+To complete the PDI controller, the integral component was added, which accumulates the derivative errors since the error is different from 0. In this case, the previous time was reduced by 1 second and the stability was improved a little.
 
 [Video](https://user-images.githubusercontent.com/35663120/111397183-f0662180-86c0-11eb-923b-32e0a013b515.mp4)
 
-## Añadiendo velocidad variable
+## Adding variable speed
 
-Los controladores anteriores funcionaban de manera correcta para una velocidad dada. Esta velocidad era constante, lo cual tenía sus limitaciones. En primer lugar, se perdía mucho tiempo en las rectas, ya que existe un compromiso implícito entre la velocidad en curvas y rectas debido a la inercialidad del sistema. En segundo lugar, al ser alta la velocidad se produce inestabilidad en las salidas de las curvas, y en las curvas consecutivas entra en juego la no determinación del sistema produciendo colisiones en ocasiones. Por último, la velocidad constante dificulta las correcciones, similar al anterior, producto de la inercialidad del sistema.
+Previous controllers worked correctly for a given speed. This speed was constant, which had its limitations. Firstly, a lot of time was lost on the straights, as there is an implicit trade-off between speed on curves and straights due to the inertiality of the system. Secondly, the high speed causes instability at the exits of the curves, and in consecutive curves the non-determinism of the system comes into play, sometimes producing collisions. Finally, the constant speed makes corrections difficult, similar to the previous one, due to the inertia of the system.
 
-### Controlador PDI + Velocidad Variable I
-A pesar de los inconvenientes anteriormente mencionados, la velocidad constante permitió descubrir cual es la velocidad máxima con la que el coche puede atravesar las curvas sin producir mucha inestabilidad. Teniendo esto último en cuenta se plantea la primera variante de controlador de velocidad.
+### PDI Controller + Variable Speed I
+Despite the aforementioned drawbacks, the constant speed allowed us to discover the maximum speed at which the car can go through the curves without producing too much instability. With the latter in mind, the first variant of the speed controller is proposed.
 
-La idea es calcular el ángulo que forma el centroide superior con el centro de la imagen, para ello se hace uso de la función `arctg(h/b)` donde `h` es la distancia entre centroides y b es la distancia del centroide superior con el centro de la imagen. (*la figura siguiente ilustra la idea*).
+The idea is to calculate the angle formed by the upper centroid with the center of the image, for this we make use of the function `arctg(h/b)` where `h` is the distance between centroids and b is the distance of the upper centroid with the center of the image. (*the following figure illustrates the idea*).
 
 ![v_primer](https://user-images.githubusercontent.com/35663120/111803036-f16c9e00-88ce-11eb-8ffe-c4b2e6cc7741.png)
 
-El valor absoluto  del ángulo resultante siempre es menor que 90º, (*ya que cuando es 90 quiere decir que los puntos están alineados y es imposible que sea mayor ya que se tratan de angulos interiores de un triángulo rectángulo*). Se puede obtener entonces, la proporción `ratio_v = alpha/90` que estará en el intervalo (0, 1). Esta proporción será cercana a 1 en rectas y cercana a 0 en curvas. Con esto en mente se puede especificar dos valores de velocidad un `vmax` que será la velocidad máxima que puede tomar el coche y `vmin` que será el límite inferior. La velocidad a aplicar en cada instante de tiempo se calcula como `curr_v = ratio_v * vmax`, en caso de que dicha velocidad sea inferior a `vmin` será esta `vmin` el valor actual a aplicar. 
+The absolute value of the resulting angle is always less than 90º, (*since when it is 90 it means that the points are aligned and it is impossible for it to be greater since they are interior angles of a right triangle*). We can then obtain the ratio `ratio_v = alpha/90` which will be in the interval (0, 1). This ratio will be close to 1 for straight lines and close to 0 for curves. With this in mind you can specify two speed values `vmax` which will be the maximum speed the car can take and `vmin` which will be the lower limit. The speed to apply at each instant of time is calculated as `curr_v = ratio_v * vmax`, in case this speed is lower than `vmin` will be this `vmin` the actual value to apply. 
 
-Al ejecutar el ejercicio:
-- Con `vmin=1.7` y `vmax=3.0` se obtiene un tiempo de 45 segundos, se sale en algunas curvas y tiene pocas oscilaciones.
-- Con `vmin=2.0` y `vmax=4.0` se obtiene un tiempo de 37 segundos, se sale en algunas curvas y comienza a oscilar en algunas curvas.
-- Con `vmin=2.0` y `vmax=4.5` se obtiene un tiempo de 32 segundos, se sale en algunas curvas y, *para mi sorpresa* no osciló en las curvas como antes. Al salir de una curva se incorporaba con naturalidad al centro.
-- Con `vmin=2.5` y `vmax=4.5` se obtiene un tiempo de 31 segundos, se sale en algunas curvas y, como antes, presenta naturalidad en su comportamiento.
-- Con `vmax=5` choca en la primera curva.
-- Con `vmin=3` y `vmax=4.8` se obtiene un tiempo de 29 segundos, se sale en todas las curvas y comienza a oscilar como en la segunda ejecución.
-- Con `vmin=3.5` y `vmax=4.8` se obtiene un tiempo de 27 segundos, comportamiento idéntico al anterior.
+When executing the exercise:
+- With `vmin=1.7` and `vmax=3.0` a time of 45 seconds is obtained, it goes out in some curves and has few oscillations.
+- With `vmin=2.0` and `vmax=4.0` a time of 37 seconds is obtained, it goes out in some curves and starts to oscillate in some curves.
+- With `vmin=2.0` and `vmax=4.5` you get a time of 32 seconds, it comes out in some corners and, *to my surprise* it didn't oscillate in the corners as before. Coming out of a corner it naturally merged into the center.
+- With `vmin=2.5` and `vmax=4.5` a time of 31 seconds is obtained, it comes out in some curves and, as before, presents naturalness in its behavior.
+- With `vmax=5` it crashes in the first curve.
+- With `vmin=3` and `vmax=4.8` a time of 29 seconds is obtained, it goes out in all the curves and begins to oscillate as in the second execution.
+- With `vmin=3.5` and `vmax=4.8` a time of 27 seconds is obtained, identical behavior to the previous one.
 
-Como se puede ver, se ha llevado al límite a este controlador en cuanto a velocidad a costa de estabilidad y seguimiento de línea.
+As can be seen, this controller has been pushed to the limit in terms of speed at the expense of stability and line tracking.
 
-### Controlador PDI + Velocidad Variable II
+### PDI Controller + Variable Speed II
 
-Siguiendo con la idea anterior, se plantea esta vez el cálculo del ratio de la velocidad de forma similar, esta vez, utilizando el centroide inferior. 
+Continuing with the previous idea, the calculation of the speed ratio is approached this time in a similar way, this time using the lower centroid.
 
 ![v_primer](https://user-images.githubusercontent.com/35663120/111809495-575c2400-88d5-11eb-9e1d-bd6d52a6e182.png)
 
-La idea es controlar, no solo la velocidad antes de las curvas, sino durante las curvas, ya que en mitad de una el centroide superior se situa en el centro casi siempre. Esta vez la velocidad a aplicar va a ser la resultante de la ecuación `a * v_ratio_sup + (1 - a) * v_ratio_inf` de esta forma si `a = 1` tenemos el caso anterior.
+The idea is to control, not only the speed before the curves, but also during the curves, since in the middle of a curve the upper centroid is almost always located in the center. This time the speed to apply is going to be the resultant of the equation `a * v_ratio_sup + (1 - a) * v_ratio_inf` so if `a = 1` we have the previous case.
 
-Al ejecutar el ejercicio:
-- Con `vmin=2.0`, `vmax=4.5` y `a=0.5` se obtiene un tiempo de 35 segundos, peor que su equivalente anterior en todos los aspectos. Aunque después de las curvas se nota cierta mejoría.
-- Con `vmin=2.0`, `vmax=4.5` y `a=0.8` se igualó en tiempo al anterior y tiene más estabilidad en curvas, sobretodo, en las curvas consecutivas.
-- Con `vmin=3.5`, `vmax=4.8` y `a=0.8` se obtiene un tiempo de 26 segundos. Un segundo por debajo a su equivalente y más estable.
+By executing the exercise:
+- `vmin=2.0`, `vmax=4.5` and `a=0.5` we get a time of 35 seconds, worse than its previous equivalent in all respects. Although some improvement is noted after the curves.
+- With `vmin=2.0`, `vmax=4.5` and `a=0.8` it was equal in time to the previous one and has more stability in curves, above all, in consecutive curves.
+- With `vmin=3.5`, `vmax=4.8` and `a=0.8` a time of 26 seconds is obtained. One second below its equivalent and more stable.
 
-Este controlador, mejora la estabilidad de la ejecución del ejercicio en las curvas como se pensaba, no obstante, al llevar al límite dicho ejercicio, es inevitable que se salga de las curvas que están inmediatamente después de una recta, ya que en rectas se va a velocidad máxima y la variación de dicha velocidad viene indicada por el ángulo de entrada a la curva, esto provoca que los cambios de velocidad sean muy abruptos.
+This controller, improves the stability of the execution of the exercise in the curves as it was thought, nevertheless, when taking to the limit this exercise, it is inevitable that one leaves the curves that are immediately after a straight line, since in straight lines one goes to maximum speed and the variation of this speed is indicated by the angle of entrance to the curve, this causes that the changes of speed are very abrupt.
 
-### Controlador PDI + Velocidad Variable III
+### PDI + Variable Speed Controller III
 
-Para suavizar los cambios de velocidad, se ha pensado en introducir un factor de suavidad `s` que indique cuanto se tiene que cambiar el ratio actual con respecto al anteriormente aplicado, de esta forma, se evitan saltos abruptos de velocidad y los cambios de esta son más orgánicos. Entonces, con esto en cuenta la velocidad a aplicar en cada instante es `s * (a * v_ratio_sup + (1 - a) * v_ratio_inf) + (1 - s) * v_ratio_anterior`. Igual que antes, si `s = 1` tenemos el caso anterior.
+To smooth the speed changes, it has been thought to introduce a smoothness factor `s` that indicates how much the current ratio has to be changed with respect to the previously applied one, in this way, abrupt speed jumps are avoided and the speed changes are more organic. So, with this in mind the speed to apply at each instant is `s * (a * v_ratio_up + (1 - a) * v_ratio_inf) + (1 - s) * v_ratio_previous`. As before, if `s = 1` we have the previous case.
 
-- Con `vmin=2.0`, `vmax=4.5`, `a=0.8` y `s=0.5` se obtiene un tiempo de 35 segundos, con un comportamiento más estable que su equivalente anterior.
-- Con `vmin=2.0`, `vmax=4.5`, `a=0.8` y `s=0.8` se obtiene un tiempo de 34 segundos, sin muchas diferencias.
-- Con `vmin=2.0`, `vmax=4.5`, `a=0.8` y `s=0.2` se obtiene un tiempo de 37 segundos, tiempo peor, aunque la estabilidad se mantiene.
-- Con `vmin=3.5`, `vmax=4.8`, `a=0.8` y `s=0.2` se obtiene un tiempo de 26 segundos, muchismo más estable que todos los equivalentes anteriores, aunque solo es cuestión de rapidez en completar el circuito ya que se sale de la línea constantemente en curvas.
-- Con `vmin=3.5`, `vmax=5`, `a=0.8` y `s=0.2` se obtiene un tiempo de 25 segundos, siendo el primer controlador lo suficientemente estable como para manejar velocidad 5.
+- With `vmin=2.0`, `vmax=4.5`, `a=0.8` and `s=0.5` we obtain a time of 35 seconds, with a more stable behavior than its previous equivalent.
+- With `vmin=2.0`, `vmax=4.5`, `a=0.8` and `s=0.8` a time of 34 seconds is obtained, without much difference.
+- With `vmin=2.0`, `vmax=4.5`, `a=0.8` and `s=0.2` a time of 37 seconds is obtained, a worse time, although stability is maintained.
+- With `vmin=3.5`, `vmax=4.8`, `a=0.8` and `s=0.2` a time of 26 seconds is obtained, much more stable than all the previous equivalents, although it is only a question of speed in completing the circuit since it constantly goes out of line in curves.
+- With `vmin=3.5`, `vmax=5`, `a=0.8` and `s=0.2` a time of 25 seconds is obtained, the first controller being stable enough to handle speed 5.
 
-## Camino sobre la línea
+## Path over the line
 
-Todos expermientos anteriores miden el comportamiento del controlador en situaciones extremas de velocidad para determinar la capacidad de autorregulación *(variando su velocidad y su ángulo de giro)* y autoestabilizarse *(ser capaz de centrarse en el camino una vez se modifica su velocidad o ángulo de giro)*. Sin embargo, la especificación es, desde un principio *seguir la línea con un tiempo inferior a 1 minuto*.
+All of the above experiments measure the behavior of the controller in extreme speed situations to determine the ability to self-regulate *(varying its speed and turning angle)* and self-stabilize *(being able to center itself on the path once its speed or turning angle is modified)*. However, the specification is, from the outset *to follow the line with a time of less than 1 minute*.
 
-Por ello, se probará el controlador más estable, el **Controlador PDI + Velocidad Variable III** modificando su velocidad mínima y máxima y ajustando los parámetros `a` y `s`.
+Therefore, the most stable controller, the **PDI Controller + Variable Speed III** will be tested by modifying its minimum and maximum speed and adjusting the `a` and `s` parameters.
 
-- Con `vmin=1`, `vmax=3`, `a=0.8` y `s=0.2` se obtiene un tiempo de 47 segundos, completando ambos requisitos de tiempo y seguimiento de la línea.
+- With `vmin=1`, `vmax=3`, `a=0.8` and `s=0.2` a time of 47 seconds is obtained, completing both timing and line tracking requirements.
 
 [Video](https://user-images.githubusercontent.com/35663120/111825051-4d432100-88e7-11eb-82df-a69dfa585b12.mp4)
 
-- Con `vmin=2`, `vmax=3`, `a=0.8` y `s=0.2` se obtiene un tiempo de 40 segundos.
+- With `vmin=2`, `vmax=3`, `a=0.8` and `s=0.2` a time of 40 seconds is obtained.
 
 [Video](https://user-images.githubusercontent.com/35663120/111826156-a2336700-88e8-11eb-9044-1f80f1aa7077.mp4)
 
-### Probando en el sentido contrario
+### Testing in the opposite direction
 
-Para comprobar el algoritmo del todo, se le dió la vuelta al coche y se probó en sentido contrario, el resultado se muestra en el video siguiente.
+To test the whole algorithm, the car was turned around and tested in the opposite direction, the result is shown in the video below.
 
 [Video](https://user-images.githubusercontent.com/35663120/111835251-fe9c8380-88f4-11eb-91f9-1db7779e6422.mp4)
 
-## Añadiendo robustez
+## Adding robustness
 
-Hasta ahora, se ha completado el circuito siempre que hay una línea *(Follow Line)* en el circuito. Sin embargo, es posible que no haya linea que seguir, es entonces donde hay que añadir un comportamiento que solucione este inconveniente. Para poder comprobar esta característica se forzó un inicio contra la pared. El algoritmo realiza la búsqueda del centroide superior, si no la encuentra gira un poco en una dirección, repitiendo esto hasta encontrar la línea.
+So far, the circuit has been completed whenever there is a *(Follow Line)* in the circuit. However, it is possible that there is no line to follow, it is then where a behavior needs to be added that addresses this drawback. In order to test this feature, a start was forced against the wall. The algorithm performs the search for the upper centroid, if it does not find it turns a little in one direction, repeating this until the line is found.
 
 [Video](https://user-images.githubusercontent.com/35663120/111835346-22f86000-88f5-11eb-9d1f-d73ed2c5bf87.mp4)
 
-# Funciones importantes
+# Important functions
 
-A lo largo de todo este post, se han mencionado por encima las funciones utilizadas, en este apartado se pretende explicarlas con un poco más de profundidad.
+Throughout this post, the functions used have been mentioned above, in this section we intend to explain them in a little more depth.
 
-## Filtro de color
+## Color filter
 
 ````python
 def color_filter(img):
     import cv2
     
-    # Definir el rango de los valores HSV
+    # Define the range of HSV values
     MIN_HSV_LINE, MAX_HSV_LINE = (0, 77, 56), (0, 255, 255)
     
-    # Conversión del color
+    # Color conversion
     im_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     
-    # Cálculo de la máscara
+    # Mask calculation
     im_line_mask = cv2.inRange(im_hsv, MIN_HSV_LINE, MAX_HSV_LINE)
     _, im_line_mask = cv2.threshold(im_line_mask, 248, 255, cv2.THRESH_BINARY)
     return im_line_mask
 ````
 
-## Cálculo de los momentos
+## Moment calculation
 
-En esta función `cnt` es el primer contorno *(el más grande)* de `cv2.findContours`.
+In this function `cnt` is the first *(largest)* contour of `cv2.findContours`.
 
 ````python
 def get_moments(cnt):
@@ -203,38 +193,41 @@ def get_moments(cnt):
         cx = int(M['m10'] / M['m00'])
         cy = int(M['m01'] / M['m00'])
     else:
-        # Si no se pudo calcular.
+        # If it could not be calculated.
         cx = cy = -1
     return cx, cy
 ````
 
-## Cálculo de errores
+## Error calculation
 
 ````python
 def compute_errors(err, prev_err, accum_err, console):
-    # Reemplazar _ con los correspondientes valores
+    # Replace _ with the corresponding values
     kp, kd, ki = _, _, _ 
     
     p_err = - kp * err
     d_err = - kd * (err - prev_err)
     i_err = - ki * accum_err
     
-    # Ecuación del controlador PDI
+    # PDI controller equation
     pdi = p_err + d_err + i_err
     
     return pdi
 ````
 
-## Cálculo del ratio de velocidad
+## Speed ratio calculation
 
 ````python
 def speed_v_modulator_on_curve(h, b):
     import math
-    # Cálculo del ángulo en radianes
+    
+    # Calculation of the angle in radians
     rads = math.atan(abs(h/(b + 1e-8)))
-    # Conversión a grados
+    
+    # Conversion to degrees
     alpha = math.degrees(rads)
-    # Cálculo del ratio
+    
+    # Ratio calculation
     v_ratio = alpha / 90
     return v_ratio
 ````
