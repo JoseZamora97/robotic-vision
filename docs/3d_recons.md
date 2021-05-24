@@ -1,22 +1,22 @@
 # 3D Reconstruction
 
-En este ejercicio se pretende realizar una reconstrucción de una escena en tres dimensiones a partir de dos imágenes capturadas por un para estéreo calibrado.
+In this exercise, the aim is to reconstruct a three-dimensional scene from two images captured by a calibrated stereo viewer.
 
-## Desarrollando el ejercicio
+## Developing the exercise
 
-Para realizar la reconstrucción 3D de un escena se puede trabajar de múltiples formas, pero todas tienen en común la utilización de la geometría epipolar, pero antes de entrar en detalles, voy a explicar el proceso a seguir.
+To perform the 3D reconstruction of a scene you can work in multiple ways, but all have in common the use of epipolar geometry, but before going into details, I will explain the process to follow.
 
-En primer lugar se buscarán pares de puntos homólogos, este procedimiento se puede realizar de muchas formas y de hecho, para este ejercicio, probe con varias. Una de ellas fue intentar extraer características con métodos como el *SIFT* y el *ORB* y luego hacer matching de estos puntos con *FLANN* y *BFM*, pero la versión de *OpenCV* que se emplea en el simulador es la 3.2 y no contiene estos métodos, o al menos no conseguí implementarlos como con otras versiones. Después de esto intenté utilizar el detector de esquinas de Shi-Tomasi con el método `goodFeaturesToTrack` pero esto resultó en muy pocos puntos y no se veía muy bien la reconstrucción. Por último, se probó el detector de bordes de Canny y fue el que se utilizó al final.
+First of all we will look for pairs of homologous points, this procedure can be done in many ways and in fact, for this exercise, I tried several of them. One of them was to try to extract features with methods like *SIFT* and *ORB* and then match these points with *FLANN* and *BFM*, but the version of *OpenCV* used in the simulator is 3.2 and does not contain these methods, or at least I did not manage to implement them as with other versions. After this I tried to use the Shi-Tomasi corner detector with the `goodFeaturesToTrack` method but this resulted in very few points and the reconstruction did not look very good. Finally, the Canny edge detector was tried and was the one used in the end.
 
-La idea es aplicar Canny y detectar los bordes utilizando la información del gradiente *(figura de abajo)*. 
+The idea is to apply Canny and detect the edges using the gradient information *(figure below)*. 
 
 ![canny](https://user-images.githubusercontent.com/35663120/119275926-30dda080-bc18-11eb-9d74-eff0c56acee5.png)
 
-Después calcular el rayo de retroproyección que pasa por centro óptico de la cámara de la izquierda que pasa por el punto. Y proyectar dicha recta en la imagen obtenida por la cámara de la derecha. Para realizar este procedimiento se empleó la función `find_directional_ray`, que devuelve una recta expresada como un vector director y un punto y donde se hizo uso de las funciones:
+Then calculate the back projection ray passing through the optical center of the camera on the left passing through the point. And project this line on the image obtained by the camera on the right. To perform this procedure we used the function `find_directional_ray`, which returns a line expressed as a director vector and a point and where we made use of the functions:
 
-- `HAL.getCameraPosition`: que devuelve la posición de la cámara.
-- `HAL.backproject`: reproyecta un punto en 2D al sistema de referencia 3D.
-- `HAL.graficToOptical`: que transforma el sistema de coordenada de la imagen al sistema de coordenadas de la cámara.
+- `HAL.getCameraPosition`: which returns the camera position.
+- HAL.backproject`: reprojects a 2D point to the 3D reference system.
+- HAL.graficToOptical`: transforms the image coordinate system to the camera coordinate system.
 
 ````python
 def find_directional_ray(cam_where, point2d):
@@ -26,13 +26,12 @@ def find_directional_ray(cam_where, point2d):
     return np.append(p1 - p0, [1]), np.append(p0, [1])
 ````
 
-Una vez se tiene el rayo de retroproyección, es necesario, como se comentó anteriormente, proyectarlo sobre la cámara de la derecha. Para ello se implementó la función 
-`find_epipolar_projection` que, a partir de un rayo de retroproyección crea una máscara con la línea epipolar. En esta función, se hizo uso de las funciones 
+Once the back projection beam is obtained, it is necessary, as previously mentioned, to project it onto the camera on the right. For this purpose, the function `find_epipolar_projection` was implemented, which creates a mask with the epipolar line from a back projection ray. In this function, use was made of the functions:
 
-- `HAL.project`: proyecta un punto en 3D de la escena en un punto 2D del sistema de la imagen. 
-- `HAL.opticalToGrafic`: transforma un punto en el sistema 3D de la cámara al sistema de la imagen.
+- HAL.project`: projects a 3D point of the scene onto a 2D point of the image system. 
+- HAL.opticalToGrafic`: transforms a point in the 3D system from the camera to the image system.
 
-Para realizar esta tarea esta función toma dos puntos de la recta de reproyección y los proyecta en la imagen de la cámara de la derecha, posteriomente, calcula la recta que pasa por ambos puntos en la imagen obteniendo los puntos extremos (para que pueda ocupar toda la imagen). Una vez se tienen estos putnos es facil crear una máscara dibujando una línea de valores `True` sobre una imagen de `False`s con `numpy`. El grosor de la línea epipolar es configurable a través del parámetro `ksize`.
+To perform this task this function takes two points of the reprojection line and projects them on the camera image on the right, then, it calculates the line that passes through both points in the image obtaining the extreme points (so that it can occupy the whole image). Once you have these points it is easy to create a mask by drawing a line of `True` values over an image of `False`s with `numpy`. The thickness of the epipolar line is configurable through the `ksize` parameter.
 
 ````python
 def find_epipolar_projection(cam_where, dr_ray, im_size, ksize=9):
@@ -58,11 +57,11 @@ def find_epipolar_projection(cam_where, dr_ray, im_size, ksize=9):
     return mask.astype(bool)
 ````
 
-Una vez se tiene el punto (en la imagen izquirda) y su proyección epipolar (en la imagen derecha), es necesario buscar su homólogo, en este caso se optó por aplicar la función `matchTemplate` por la imagen de franja epipolar (obtenida tras multiplicar la máscara anterior y la imagen derecha). Obteniendo algo parecido a la imagen siguiente:
+Once you have the point (in the left image) and its epipolar projection (in the right image), it is necessary to find its counterpart, in this case we chose to apply the `matchTemplate` function for the epipolar fringe image (obtained after multiplying the previous mask and the right image). Obtaining something similar to the following image:
 
 ![epipolar_matching](https://user-images.githubusercontent.com/35663120/119275931-34712780-bc18-11eb-9a2c-f90e0e63e6e3.png)
 
-Este proceso se llevó a cabo en la función `find_homologous` que dado un punto en 2D y la máscara epipolar es capaz de calcular su homólogo. Para aplicar el algoritmo de `matchTemplate` se usó el ejemplo directo de la documentación, que hace uso también de la función `minMaxLoc` que extrae el mejor match, devolviendo la parte superior izquierda de la región detectada, a la que se le tiene que sumar el ancho de padding de la región, para seleccionar el píxel central. Dicho padding se puede ajustar a través del parámetro `ksize`.
+This process was carried out in the `find_homologous` function that given a 2D point and the epipolar mask is able to calculate its homologous. To apply the `matchTemplate` algorithm we used the direct example from the documentation, which also makes use of the `minMaxLoc` function that extracts the best match, returning the upper left part of the detected region, to which the padding width of the region has to be added, to select the central pixel. This padding can be adjusted through the `ksize` parameter.
 
 ````python
 def find_homologous(point2d, im_left, im_right, im_epipolar_mask, ksize=9):
@@ -81,18 +80,18 @@ def find_homologous(point2d, im_left, im_right, im_epipolar_mask, ksize=9):
     return match_point, coeff
 ````
 
-El resultado de aplicar este algoritmo varias veces, da como resultado la siguiente figura, donde se muestran una selección aleatoria de unos pocos puntos (por motivos de visibilidad) aunque en el algoritmo final se ejecuta por cada punto presente en la imagen de bordes de `Canny`.
+The result of applying this algorithm several times, results in the following figure, where a random selection of a few points are shown (for visibility reasons) although in the final algorithm it is executed for each point present in the `Canny` edge image.
 
 ![homologous](https://user-images.githubusercontent.com/35663120/119275933-36d38180-bc18-11eb-9814-61b927e82a84.png)
 
-Una vez se tienen los pares de puntos homólogos se puede calcular ambos rayos de retroproyección y ver donde se cortan para calcular el punto en 3D. Esto en si es un problema puesto que las rectas (debido a las imprecisiones) puenden no llegar a cortarse, sino simplemente cruzarse. Esto se puede solventar en calculando una solución de mínimos cuadrados utilizando la función `np.linalg.lstsq` empleando el punto medio del vector normal a ambos rayos de retroprojección, es decir:
+Once you have the pairs of homologous points you can calculate both back projection rays and see where they intersect to calculate the 3D point. This in itself is a problem since the lines (due to inaccuracies) may not actually intersect, but simply cross. This can be solved by calculating a least squares solution using the `np.linalg.lstsq` function using the midpoint of the normal vector to both back projection rays:
 
 ````python
-# dr_left: rayo de retroproyección izquierdo
-# dr_right: rayo de retroproyección derecho
-# n: vector normal a ambos
-# cam_right: centro optico de la cámara derecha
-# cam_left: centro optico de la cámara izquierda
+# dr_left: left rear projection beam
+# dr_right: right back projection ray
+# n: vector normal to both
+# cam_right: optical center of right camera
+# cam_left: optical center of left camera
 
 n = np.cross(dr_left[0][:3], dr_right[0][:3])
 A = np.array([dr_left[0][:3], n, -dr_right[0][:3]]).T
@@ -102,10 +101,10 @@ alpha, beta = solve_lstsq(A, b)
 point3d = (alpha * dr_left[0][:3]) + ((beta / 2) * n)
 ````
 
-## Resultados y observaciones.
+## Results and observations.
 
-Los resultados se muestran en el siguiente video, en el se ve una reconstruccíon 3D de la escena bastante decente. Estuve buscando la forma de rellenar por completo dicha escena, pero no encontré la forma. El sistema desarrollado no asume que las cámaras son un par estéreo canónico, por lo que es robusto frente a cambios en los extrinsecos de las cámaras.
+The results are shown in the following video, which shows a pretty decent 3D reconstruction of the scene. I was looking for a way to completely fill the scene, but I couldn't find a way. The developed system does not assume that the cameras are a canonical stereo pair, so it is robust to changes in the extrinsics of the cameras.
 
 [Video](https://user-images.githubusercontent.com/35663120/119276209-e3fac980-bc19-11eb-8bc8-4398c9cfa3ee.mp4)
 
-En un primer lugar me lancé en la búsqueda de una solución completamente diferente a esta, intenté encontrar la matriz fundamental para calcular todas las lineas epipolares de todos los píxels y buscar una solución densa. Sin embargo, me encontré con problemas con el SIFT para estimar rapidamente 8 puntos homólogos y así empezar a realizar dicha aproximación. Tuve muchos problemas con la versión de *OpenCV* del simulador que me impidieron avanzar en ese lado y al final opté por esta solución, que es muchísimo mas simple, pero da resultados esperados con la pega de que tarda mucho.
+At first, I tried to find the fundamental matrix to calculate all the epipolar lines of all the pixels and look for a dense solution. However, I ran into problems with the SIFT to quickly estimate 8 homologous points to start making such an approximation. I had many problems with the *OpenCV* version of the simulator that prevented me to advance on that side and in the end I opted for this solution, which is much simpler, but gives expected results with the drawback that it takes a long time.
