@@ -15,8 +15,8 @@ The idea is to apply Canny and detect the edges using the gradient information *
 Then calculate the back projection ray passing through the optical center of the camera on the left passing through the point. And project this line on the image obtained by the camera on the right. To perform this procedure we used the function `find_directional_ray`, which returns a line expressed as a director vector and a point and where we made use of the functions:
 
 - `HAL.getCameraPosition`: which returns the camera position.
-- HAL.backproject`: reprojects a 2D point to the 3D reference system.
-- HAL.graficToOptical`: transforms the image coordinate system to the camera coordinate system.
+- `HAL.backproject`: reprojects a 2D point to the 3D reference system.
+- `HAL.graficToOptical`: transforms the image coordinate system to the camera coordinate system.
 
 ````python
 def find_directional_ray(cam_where, point2d):
@@ -28,8 +28,8 @@ def find_directional_ray(cam_where, point2d):
 
 Once the back projection beam is obtained, it is necessary, as previously mentioned, to project it onto the camera on the right. For this purpose, the function `find_epipolar_projection` was implemented, which creates a mask with the epipolar line from a back projection ray. In this function, use was made of the functions:
 
-- HAL.project`: projects a 3D point of the scene onto a 2D point of the image system. 
-- HAL.opticalToGrafic`: transforms a point in the 3D system from the camera to the image system.
+- `HAL.project`: projects a 3D point of the scene onto a 2D point of the image system. 
+- `HAL.opticalToGrafic`: transforms a point in the 3D system from the camera to the image system.
 
 To perform this task this function takes two points of the reprojection line and projects them on the camera image on the right, then, it calculates the line that passes through both points in the image obtaining the extreme points (so that it can occupy the whole image). Once you have these points it is easy to create a mask by drawing a line of `True` values over an image of `False`s with `numpy`. The thickness of the epipolar line is configurable through the `ksize` parameter.
 
